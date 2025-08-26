@@ -1,220 +1,990 @@
-/////////////////////// >> esp32 interface TM1638 Clock << /////////////////////
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>کنترل ساعت هوشمند ESP32</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>گیج کیلومتر شمار موبایل</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary: #2196F3;
-            --secondary: #FF9800;
-            --danger: #f44336;
-            --text-dark: #333;
-            --bg-light: #f5f5f5;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-dark);
-            line-height: 1.6;
-            padding: 20px;
-            max-width: 800px;
+            font-family: 'Vazirmatn', sans-serif;
+            background: linear-gradient(135deg, #0a0e1a, #1a2238);
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+        
+        .container {
+            max-width: 100%;
+            padding: 15px;
             margin: 0 auto;
         }
         
-        h1 {
-            color: var(--primary);
+        .header {
             text-align: center;
-            margin-bottom: 30px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: rgba(0, 10, 30, 0.7);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
         }
         
-        .clock-display {
-            font-size: 3rem;
-            text-align: center;
-            margin: 30px 0;
-            font-family: 'Courier New', monospace;
-            color: var(--primary);
-            letter-spacing: 3px;
-            direction: ltr;
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00b4db, #0083b0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: rgba(200, 220, 255, 0.8);
+            font-size: 14px;
+        }
+        
+        .speedometer-container {
+            background: rgba(0, 5, 15, 0.8);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .speedometer {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+        }
+        
+        .outer-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0a1526, #020c1c);
+            box-shadow: 0 0 0 4px #0d1a2d,
+                        0 0 0 8px rgba(30, 144, 255, 0.15),
+                        0 0 20px rgba(30, 144, 255, 0.3),
+                        inset 0 0 15px rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .inner-dial {
+            width: 230px;
+            height: 230px;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, #07121f, #030a15);
+            border: 1px solid rgba(50, 100, 180, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+        }
+        
+        .needle {
+            position: absolute;
+            width: 4px;
+            height: 100px;
+            background: linear-gradient(to top, #ff3366, #ff004c, #ff3366);
+            bottom: 50%;
+            left: 50%;
+            transform: translateX(-50%) rotate(0deg);
+            transform-origin: bottom center;
+            border-radius: 4px 4px 0 0;
+            box-shadow: 0 0 10px rgba(255, 0, 102, 0.7);
+            z-index: 10;
+            transition: transform 0.8s cubic-bezier(0.22, 1.61, 0.65, 1);
+        }
+        
+        .needle::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #ff004c;
+            border-radius: 50%;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px rgba(255, 0, 102, 0.8);
+        }
+        
+        .needle-center {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #ff004c, #cc003d);
+            border-radius: 50%;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            box-shadow: 0 0 15px rgba(255, 0, 102, 0.9);
+            z-index: 11;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .speed-display {
+            position: absolute;
+            bottom: 40%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0, 100, 255, 0.9);
+            letter-spacing: 1px;
+        }
+        
+        .unit {
+            position: absolute;
+            bottom: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: rgba(180, 220, 255, 0.9);
+            text-shadow: 0 0 5px rgba(30, 144, 255, 0.7);
         }
         
         .controls {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            display: flex;
+            justify-content: center;
             gap: 15px;
-            margin-top: 30px;
+            margin: 20px 0;
         }
         
-        button {
-            padding: 15px;
+        .controls button {
+            background: linear-gradient(to bottom, rgba(0, 50, 100, 0.7), rgba(0, 30, 70, 0.7));
             border: none;
-            border-radius: 8px;
-            background-color: var(--primary);
             color: white;
+            padding: 12px 20px;
+            border-radius: 50px;
             cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(50, 120, 255, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2),
+                        inset 0 0 8px rgba(0, 50, 100, 0.5);
             font-size: 16px;
-            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 120px;
+            justify-content: center;
         }
         
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
+        .controls button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 8px rgba(30, 144, 255, 0.3);
         }
         
-        .danger {
-            background-color: var(--danger);
+        .slider-container {
+            margin: 15px 0;
+            padding: 0 10px;
         }
         
-        .status {
-            margin-top: 30px;
-            padding: 15px;
-            background-color: #f0f0f0;
-            border-radius: 8px;
+        .slider {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #004d99, #0080ff);
+            outline: none;
         }
         
-        .connection-status {
-            display: inline-block;
-            width: 15px;
-            height: 15px;
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            background-color: #f44336;
-            margin-left: 5px;
+            background: #ff004c;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 0, 102, 0.8);
         }
         
-        .connected {
-            background-color: #4CAF50;
+        .info-panel {
+            background: rgba(0, 5, 15, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
         }
         
-        @media (max-width: 600px) {
-            .controls {
-                grid-template-columns: 1fr;
+        .info-card {
+            background: linear-gradient(to right, rgba(0, 20, 40, 0.7), rgba(0, 30, 60, 0.7));
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(50, 100, 180, 0.3);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2),
+                        inset 0 0 8px rgba(0, 30, 60, 0.5);
+        }
+        
+        .info-title {
+            font-size: 14px;
+            color: rgba(180, 220, 255, 0.9);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 8px rgba(30, 144, 255, 0.7);
+        }
+        
+        .install-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(to right, #00b4db, #0083b0);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 180, 219, 0.4);
+            cursor: pointer;
+        }
+        
+        /* بهینه‌سازی برای اندازه‌های مختلف صفحه */
+        @media (max-width: 340px) {
+            .speedometer {
+                width: 250px;
+                height: 250px;
             }
             
-            .clock-display {
-                font-size: 2.5rem;
+            .inner-dial {
+                width: 200px;
+                height: 200px;
             }
+            
+            .controls button {
+                padding: 10px 15px;
+                min-width: 100px;
+                font-size: 14px;
+            }
+        }
+        
+        /* پشتیبانی از notch و لبه‌های گرد */
+        .safe-area {
+            padding-top: constant(safe-area-inset-top);
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: constant(safe-area-inset-bottom);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: constant(safe-area-inset-left);
+            padding-left: env(safe-area-inset-left);
+            padding-right: constant(safe-area-inset-right);
+            padding-right: env(safe-area-inset-right);
         }
     </style>
 </head>
 <body>
-    <h1>کنترل ساعت هوشمند ESP32</h1>
-    
-    <div class="clock-display" id="clock">--:--:--</div>
-    
-    <div class="controls">
-        <button onclick="adjustTime('HOUR', 1)">+ ساعت</button>
-        <button onclick="adjustTime('HOUR', -1)">- ساعت</button>
-        <button onclick="adjustTime('MIN', 1)">+ دقیقه</button>
-        <button onclick="adjustTime('MIN', -1)">- دقیقه</button>
-        <button onclick="sendCommand('TOGGLE')">تغییر حالت 12/24 ساعته</button>
-        <button class="danger" onclick="sendCommand('RESET')">بازنشانی ساعت</button>
+    <div class="container safe-area">
+        <div class="header">
+            <h1>گیج کیلومتر شمار موبایل</h1>
+            <p>بهینه‌شده برای اجرا در مرورگر موبایل</p>
+        </div>
+        
+        <div class="speedometer-container">
+            <div class="speedometer">
+                <div class="outer-ring">
+                    <div class="inner-dial">
+                        <div class="needle" id="needle"></div>
+                        <div class="needle-center"></div>
+                        <div class="speed-display" id="speed">0</div>
+                        <div class="unit">km/h</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="slider-container">
+                <input type="range" min="0" max="200" value="80" class="slider" id="speed-slider">
+            </div>
+            
+            <div class="controls">
+                <button id="accelerate">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>شتاب گیری</span>
+                </button>
+                <button id="decelerate">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>کاهش سرعت</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="fas fa-road"></i>
+                    <span>مسافت طی شده</span>
+                </div>
+                <div class="info-value" id="total-km">85,429 کیلومتر</div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="fas fa-gas-pump"></i>
+                    <span>سطح سوخت</span>
+                </div>
+                <div class="info-value">75%</div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>دور موتور</span>
+                </div>
+                <div class="info-value" id="rpm">2,400 RPM</div>
+            </div>
+        </div>
+        
+        <button class="install-btn" id="install-btn">
+            <i class="fas fa-download"></i>
+            نصب روی صفحه اصلی
+        </button>
     </div>
-    
-    <div class="status">
-        <p>وضعیت اتصال: <span id="status-text">قطع</span> <span class="connection-status" id="connection-status"></span></p>
-        <p>آخرین به‌روزرسانی: <span id="last-update">--:--:--</span></p>
-    </div>
-    
+
     <script>
-        // تنظیمات اتصال
-        const config = {
-            // اگر در همان شبکه محلی هستید، آدرس IP ESP32 را وارد کنید
-            esp32Ip: '192.168.254.68',
-            // اگر از اینترنت متصل می‌شوید، آدرس عمومی یا دامنه را وارد کنید
-            // esp32Ip: 'your-public-ip-or-domain.com',
-            port: 81,
-            reconnectInterval: 3000
-        };
-        
-        let ws;
-        let isConnected = false;
-        
-        // اتصال به WebSocket
-        function connect() {
-            const wsUrl = `ws://${config.esp32Ip}:${config.port}/`;
-            ws = new WebSocket(wsUrl);
+        document.addEventListener('DOMContentLoaded', function() {
+            const needle = document.getElementById('needle');
+            const speedDisplay = document.getElementById('speed');
+            const totalKmDisplay = document.getElementById('total-km');
+            const accelerateBtn = document.getElementById('accelerate');
+            const decelerateBtn = document.getElementById('decelerate');
+            const speedSlider = document.getElementById('speed-slider');
+            const rpmDisplay = document.getElementById('rpm');
+            const installBtn = document.getElementById('install-btn');
             
-            ws.onopen = function() {
-                console.log('Connected to ESP32');
-                updateConnectionStatus(true);
-                // درخواست همگام‌سازی زمان
-                ws.send('SYNC');
-            };
+            let currentSpeed = 0;
+            let totalKm = 85429;
             
-            ws.onmessage = function(event) {
-                const data = event.data;
-                console.log('Received:', data);
-                
-                // به‌روزرسانی زمان آخرین تغییر
-                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-                
-                if (data.startsWith('TIME:')) {
-                    // به‌روزرسانی نمایش ساعت
-                    document.getElementById('clock').textContent = data.substring(5);
+            // تابع به‌روزرسانی سرعت
+            function updateSpeed(newSpeed) {
+                if (newSpeed >= 0 && newSpeed <= 200) {
+                    currentSpeed = newSpeed;
+                    // محدوده چرخش عقربه از 90- درجه تا 270- درجه (180 درجه چرخش)
+                    const rotation = -90 + (currentSpeed / 200) * 270;
+                    needle.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+                    speedDisplay.textContent = currentSpeed;
+                    speedSlider.value = currentSpeed;
+                    
+                    // محاسبه دور موتور بر اساس سرعت
+                    const rpm = Math.floor(800 + (currentSpeed * 20));
+                    rpmDisplay.textContent = rpm.toLocaleString('fa-IR') + ' RPM';
+                    
+                    // افزایش مسافت طی شده بر اساس سرعت
+                    if (currentSpeed > 0) {
+                        totalKm += currentSpeed / 7200;
+                        totalKmDisplay.textContent = Math.floor(totalKm).toLocaleString('fa-IR') + ' کیلومتر';
+                    }
                 }
-            };
+            }
             
-            ws.onclose = function() {
-                console.log('Disconnected from ESP32');
-                updateConnectionStatus(false);
-                // تلاش مجدد برای اتصال
-                setTimeout(connect, config.reconnectInterval);
-            };
+            // افزودن event listener برای دکمه‌ها
+            accelerateBtn.addEventListener('click', function() {
+                const newSpeed = Math.min(currentSpeed + 10, 200);
+                updateSpeed(newSpeed);
+            });
             
-            ws.onerror = function(error) {
-                console.error('WebSocket Error:', error);
-            };
+            decelerateBtn.addEventListener('click', function() {
+                const newSpeed = Math.max(currentSpeed - 10, 0);
+                updateSpeed(newSpeed);
+            });
+            
+            // کنترل با اسلایدر
+            speedSlider.addEventListener('input', function() {
+                updateSpeed(parseInt(this.value));
+            });
+            
+            // کنترل با لمس و کشیدن روی گیج
+            let isDragging = false;
+            const speedometer = document.querySelector('.speedometer');
+            
+            speedometer.addEventListener('touchstart', function(e) {
+                isDragging = true;
+                e.preventDefault();
+            });
+            
+            speedometer.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                const rect = speedometer.getBoundingClientRect();
+                const centerY = rect.top + rect.height / 2;
+                const centerX = rect.left + rect.width / 2;
+                
+                const deltaX = touch.clientX - centerX;
+                const deltaY = touch.clientY - centerY;
+                
+                // محاسبه زاویه بر اساس موقعیت لمس
+                let angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+                angle += 90; // تنظیم برای شروع از بالا
+                if (angle < 0) angle += 360;
+                
+                // تبدیل زاویه به سرعت (0-200)
+                if (angle <= 270) {
+                    const newSpeed = Math.round((angle / 270) * 200);
+                    updateSpeed(newSpeed);
+                }
+                
+                e.preventDefault();
+            });
+            
+            speedometer.addEventListener('touchend', function() {
+                isDragging = false;
+            });
+            
+            // راهنمای نصب PWA
+            let deferredPrompt;
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                installBtn.style.display = 'block';
+            });
+            
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await             deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        installBtn.style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                }
+            });
+            
+            // مقدار اولیه
+            updateSpeed(80);
+            
+            // مخفی کردن دکمه نصب اگر مرورگر از PWA پشتیبانی نمی‌کند
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                installBtn.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>گیج کیلومتر شمار موبایل</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
         
-        // به‌روزرسانی وضعیت اتصال در رابط کاربری
-        function updateConnectionStatus(connected) {
-            isConnected = connected;
-            const statusElem = document.getElementById('connection-status');
-            const statusText = document.getElementById('status-text');
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background: linear-gradient(135deg, #0a0e1a, #1a2238);
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+        
+        .container {
+            max-width: 100%;
+            padding: 15px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: rgba(0, 10, 30, 0.7);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00b4db, #0083b0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: rgba(200, 220, 255, 0.8);
+            font-size: 14px;
+        }
+        
+        .speedometer-container {
+            background: rgba(0, 5, 15, 0.8);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .speedometer {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+        }
+        
+        .outer-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0a1526, #020c1c);
+            box-shadow: 0 0 0 4px #0d1a2d,
+                        0 0 0 8px rgba(30, 144, 255, 0.15),
+                        0 0 20px rgba(30, 144, 255, 0.3),
+                        inset 0 0 15px rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .inner-dial {
+            width: 230px;
+            height: 230px;
+            border-radius: 50%;
+            background: linear-gradient(to bottom, #07121f, #030a15);
+            border: 1px solid rgba(50, 100, 180, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+        }
+        
+        .needle {
+            position: absolute;
+            width: 4px;
+            height: 100px;
+            background: linear-gradient(to top, #ff3366, #ff004c, #ff3366);
+            bottom: 50%;
+            left: 50%;
+            transform: translateX(-50%) rotate(0deg);
+            transform-origin: bottom center;
+            border-radius: 4px 4px 0 0;
+            box-shadow: 0 0 10px rgba(255, 0, 102, 0.7);
+            z-index: 10;
+            transition: transform 0.8s cubic-bezier(0.22, 1.61, 0.65, 1);
+        }
+        
+        .needle::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: #ff004c;
+            border-radius: 50%;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px rgba(255, 0, 102, 0.8);
+        }
+        
+        .needle-center {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #ff004c, #cc003d);
+            border-radius: 50%;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            box-shadow: 0 0 15px rgba(255, 0, 102, 0.9);
+            z-index: 11;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .speed-display {
+            position: absolute;
+            bottom: 40%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0, 100, 255, 0.9);
+            letter-spacing: 1px;
+        }
+        
+        .unit {
+            position: absolute;
+            bottom: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: rgba(180, 220, 255, 0.9);
+            text-shadow: 0 0 5px rgba(30, 144, 255, 0.7);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .controls button {
+            background: linear-gradient(to bottom, rgba(0, 50, 100, 0.7), rgba(0, 30, 70, 0.7));
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(50, 120, 255, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2),
+                        inset 0 0 8px rgba(0, 50, 100, 0.5);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 120px;
+            justify-content: center;
+        }
+        
+        .controls button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 8px rgba(30, 144, 255, 0.3);
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+            padding: 0 10px;
+        }
+        
+        .slider {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #004d99, #0080ff);
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff004c;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 0, 102, 0.8);
+        }
+        
+        .info-panel {
+            background: rgba(0, 5, 15, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .info-card {
+            background: linear-gradient(to right, rgba(0, 20, 40, 0.7), rgba(0, 30, 60, 0.7));
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(50, 100, 180, 0.3);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2),
+                        inset 0 0 8px rgba(0, 30, 60, 0.5);
+        }
+        
+        .info-title {
+            font-size: 14px;
+            color: rgba(180, 220, 255, 0.9);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 8px rgba(30, 144, 255, 0.7);
+        }
+        
+        .install-btn {
+            display: block;
+            width: 100%;
+            background: linear-gradient(to right, #00b4db, #0083b0);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 180, 219, 0.4);
+            cursor: pointer;
+        }
+        
+        /* بهینه‌سازی برای اندازه‌های مختلف صفحه */
+        @media (max-width: 340px) {
+            .speedometer {
+                width: 250px;
+                height: 250px;
+            }
             
-            if (connected) {
-                statusElem.classList.add('connected');
-                statusElem.classList.remove('disconnected');
-                statusText.textContent = 'متصل';
-            } else {
-                statusElem.classList.remove('connected');
-                statusElem.classList.add('disconnected');
-                statusText.textContent = 'قطع';
+            .inner-dial {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .controls button {
+                padding: 10px 15px;
+                min-width: 100px;
+                font-size: 14px;
             }
         }
         
-        // تنظیم زمان
-        function adjustTime(type, value) {
-            if (!isConnected) {
-                alert('ابتدا به دستگاه متصل شوید');
-                return;
+        /* پشتیبانی از notch و لبه‌های گرد */
+        .safe-area {
+            padding-top: constant(safe-area-inset-top);
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: constant(safe-area-inset-bottom);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: constant(safe-area-inset-left);
+            padding-left: env(safe-area-inset-left);
+            padding-right: constant(safe-area-inset-right);
+            padding-right: env(safe-area-inset-right);
+        }
+    </style>
+</head>
+<body>
+    <div class="container safe-area">
+        <div class="header">
+            <h1>گیج کیلومتر شمار موبایل</h1>
+            <p>بهینه‌شده برای اجرا در مرورگر موبایل</p>
+        </div>
+        
+        <div class="speedometer-container">
+            <div class="speedometer">
+                <div class="outer-ring">
+                    <div class="inner-dial">
+                        <div class="needle" id="needle"></div>
+                        <div class="needle-center"></div>
+                        <div class="speed-display" id="speed">0</div>
+                        <div class="unit">km/h</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="slider-container">
+                <input type="range" min="0" max="200" value="80" class="slider" id="speed-slider">
+            </div>
+            
+            <div class="controls">
+                <button id="accelerate">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>شتاب گیری</span>
+                </button>
+                <button id="decelerate">
+                    <i class="fas fa-arrow-down"></i>
+                    <span>کاهش سرعت</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="fas fa-road"></i>
+                    <span>مسافت طی شده</span>
+                </div>
+                <div class="info-value" id="total-km">85,429 کیلومتر</div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="fas fa-gas-pump"></i>
+                    <span>سطح سوخت</span>
+                </div>
+                <div class="info-value">75%</div>
+            </div>
+            
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>دور موتور</span>
+                </div>
+                <div class="info-value" id="rpm">2,400 RPM</div>
+            </div>
+        </div>
+        
+        <button class="install-btn" id="install-btn">
+            <i class="fas fa-download"></i>
+            نصب روی صفحه اصلی
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const needle = document.getElementById('needle');
+            const speedDisplay = document.getElementById('speed');
+            const totalKmDisplay = document.getElementById('total-km');
+            const accelerateBtn = document.getElementById('accelerate');
+            const decelerateBtn = document.getElementById('decelerate');
+            const speedSlider = document.getElementById('speed-slider');
+            const rpmDisplay = document.getElementById('rpm');
+            const installBtn = document.getElementById('install-btn');
+            
+            let currentSpeed = 0;
+            let totalKm = 85429;
+            
+            // تابع به‌روزرسانی سرعت
+            function updateSpeed(newSpeed) {
+                if (newSpeed >= 0 && newSpeed <= 200) {
+                    currentSpeed = newSpeed;
+                    // محدوده چرخش عقربه از 90- درجه تا 270- درجه (180 درجه چرخش)
+                    const rotation = -90 + (currentSpeed / 200) * 270;
+                    needle.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+                    speedDisplay.textContent = currentSpeed;
+                    speedSlider.value = currentSpeed;
+                    
+                    // محاسبه دور موتور بر اساس سرعت
+                    const rpm = Math.floor(800 + (currentSpeed * 20));
+                    rpmDisplay.textContent = rpm.toLocaleString('fa-IR') + ' RPM';
+                    
+                    // افزایش مسافت طی شده بر اساس سرعت
+                    if (currentSpeed > 0) {
+                        totalKm += currentSpeed / 7200;
+                        totalKmDisplay.textContent = Math.floor(totalKm).toLocaleString('fa-IR') + ' کیلومتر';
+                    }
+                }
             }
             
-            const cmd = `ADJUST_${type}:${value}`;
-            ws.send(cmd);
-            console.log('Sent:', cmd);
-        }
-        
-        // ارسال دستور عمومی
-        function sendCommand(command) {
-            if (!isConnected) {
-                alert('ابتدا به دستگاه متصل شوید');
-                return;
+            // افزودن event listener برای دکمه‌ها
+            accelerateBtn.addEventListener('click', function() {
+                const newSpeed = Math.min(currentSpeed + 10, 200);
+                updateSpeed(newSpeed);
+            });
+            
+            decelerateBtn.addEventListener('click', function() {
+                const newSpeed = Math.max(currentSpeed - 10, 0);
+                updateSpeed(newSpeed);
+            });
+            
+            // کنترل با اسلایدر
+            speedSlider.addEventListener('input', function() {
+                updateSpeed(parseInt(this.value));
+            });
+            
+            // کنترل با لمس و کشیدن روی گیج
+            let isDragging = false;
+            const speedometer = document.querySelector('.speedometer');
+            
+            speedometer.addEventListener('touchstart', function(e) {
+                isDragging = true;
+                e.preventDefault();
+            });
+            
+            speedometer.addEventListener('touchmove', function(e) {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                const rect = speedometer.getBoundingClientRect();
+                const centerY = rect.top + rect.height / 2;
+                const centerX = rect.left + rect.width / 2;
+                
+                const deltaX = touch.clientX - centerX;
+                const deltaY = touch.clientY - centerY;
+                
+                // محاسبه زاویه بر اساس موقعیت لمس
+                let angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+                angle += 90; // تنظیم برای شروع از بالا
+                if (angle < 0) angle += 360;
+                
+                // تبدیل زاویه به سرعت (0-200)
+                if (angle <= 270) {
+                    const newSpeed = Math.round((angle / 270) * 200);
+                    updateSpeed(newSpeed);
+                }
+                
+                e.preventDefault();
+            });
+            
+            speedometer.addEventListener('touchend', function() {
+                isDragging = false;
+            });
+            
+            // راهنمای نصب PWA
+            let deferredPrompt;
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                installBtn.style.display = 'block';
+            });
+            
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await             deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        installBtn.style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                }
+            });
+            
+            // مقدار اولیه
+            updateSpeed(80);
+            
+            // مخفی کردن دکمه نصب اگر مرورگر از PWA پشتیبانی نمی‌کند
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                installBtn.style.display = 'none';
             }
-            
-            ws.send(command);
-            console.log('Sent:', command);
-        }
-        
-        // شروع اتصال هنگام بارگذاری صفحه
-        window.onload = function() {
-            connect();
-            
-            // نمایش آدرس اتصال در کنسول
-            console.log(`Attempting to connect to ws://${config.esp32Ip}:${config.port}/`);
-        };
+        });
     </script>
 </body>
 </html>
