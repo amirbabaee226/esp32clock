@@ -1,220 +1,950 @@
-/////////////////////// >> esp32 interface TM1638 Clock << /////////////////////
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>کنترل ساعت هوشمند ESP32</title>
+    <title>LED Graphic Equalizer - Stereo</title>
     <style>
-        :root {
-            --primary: #2196F3;
-            --secondary: #FF9800;
-            --danger: #f44336;
-            --text-dark: #333;
-            --bg-light: #f5f5f5;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-dark);
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2a 0%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
+            overflow-x: hidden;
         }
         
-        h1 {
-            color: var(--primary);
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: rgba(30, 30, 40, 0.95);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header {
             text-align: center;
             margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .clock-display {
-            font-size: 3rem;
-            text-align: center;
-            margin: 30px 0;
-            font-family: 'Courier New', monospace;
-            color: var(--primary);
-            letter-spacing: 3px;
-            direction: ltr;
+        .title {
+            font-size: 2.2em;
+            font-weight: 300;
+            color: #00ff88;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
         }
         
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+        .subtitle {
+            font-size: 1.1em;
+            color: #cccccc;
+            font-weight: 300;
+        }
+        
+        .controls-top {
+            display: flex;
+            justify-content: center;
             gap: 15px;
-            margin-top: 30px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
         }
         
-        button {
-            padding: 15px;
+        .control-btn {
+            padding: 12px 24px;
             border: none;
-            border-radius: 8px;
-            background-color: var(--primary);
-            color: white;
+            border-radius: 25px;
+            background: linear-gradient(145deg, #2a2a3a, #3a3a4a);
+            color: #ffffff;
+            font-weight: 500;
             cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        button:hover {
-            opacity: 0.9;
+        .control-btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 136, 0.3);
         }
         
-        .danger {
-            background-color: var(--danger);
+        .control-btn.off {
+            background: linear-gradient(145deg, #d32f2f, #b71c1c);
         }
         
-        .status {
-            margin-top: 30px;
+        .control-btn.reset {
+            background: linear-gradient(145deg, #2196f3, #1976d2);
+        }
+        
+        .control-btn.custom {
+            background: linear-gradient(145deg, #00ff88, #00cc6a);
+        }
+        
+        .spectrum-section {
+            background: rgba(20, 20, 30, 0.8);
+            border-radius: 12px;
             padding: 15px;
-            background-color: #f0f0f0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .stereo-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .channel {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
+            padding: 10px;
         }
         
-        .connection-status {
+        .channel-title {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00ff88;
+            font-size: 1.1em;
+        }
+        
+        .spectrum-bars-container {
+            width: 100%;
+            overflow: hidden;
+            padding: 0 10px;
+        }
+        
+        .spectrum-bars {
+            display: flex;
+            height: 180px;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 2px;
+            margin-bottom: 15px;
+            padding: 0 5px;
+            position: relative;
+        }
+        
+        .bar-container {
+            flex: 1;
+            min-width: 3px;
+            max-width: 6px;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+        }
+        
+        .led-bar {
+            width: 100%;
+            border-radius: 2px 2px 0 0;
+            transition: height 0.15s ease-out;
+            background: linear-gradient(to top, 
+                #00ff00 0%, 
+                #00ff00 30%, 
+                #ffff00 60%, 
+                #ff0000 90%, 
+                #ff0000 100%);
+            box-shadow: 
+                0 0 10px rgba(0, 255, 0, 0.6),
+                0 0 20px rgba(0, 255, 0, 0.3),
+                inset 0 0 10px rgba(255, 255, 255, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .peak-holder {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background-color: #ff0000;
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.8);
+            border-radius: 1px;
+            transition: top 0.1s ease-out;
+            z-index: 2;
+            left: 0;
+            top: 0;
+        }
+        
+        .frequency-labels {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 15px;
+            color: #cccccc;
+            font-size: 10px;
+            font-weight: 300;
+            margin-top: 5px;
+        }
+        
+        .frequency-labels span {
+            transform: rotate(-45deg);
+            transform-origin: top left;
             display: inline-block;
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            background-color: #f44336;
-            margin-left: 5px;
+            margin-top: 15px;
         }
         
-        .connected {
-            background-color: #4CAF50;
+        .status-bar {
+            text-align: center;
+            margin-top: 25px;
+            padding: 15px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
         }
         
-        @media (max-width: 600px) {
-            .controls {
-                grid-template-columns: 1fr;
+        .status-text {
+            color: #00ff88;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .audio-info {
+            color: #cccccc;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        
+        /* رسپانسیو برای موبایل */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                margin: 10px;
             }
             
-            .clock-display {
-                font-size: 2.5rem;
+            .title {
+                font-size: 1.8em;
             }
+            
+            .controls-top {
+                gap: 10px;
+            }
+            
+            .control-btn {
+                padding: 10px 18px;
+                font-size: 14px;
+            }
+            
+            .spectrum-bars {
+                height: 120px;
+            }
+            
+            .stereo-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .frequency-labels {
+                font-size: 8px;
+                padding: 0 10px;
+            }
+            
+            .frequency-labels span {
+                margin-top: 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .spectrum-bars {
+                height: 100px;
+            }
+            
+            .title {
+                font-size: 1.5em;
+            }
+            
+            .subtitle {
+                font-size: 0.9em;
+            }
+            
+            .frequency-labels {
+                padding: 0 5px;
+            }
+        }
+        
+        /* جلوگیری از اسکرول */
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
+        }
+        
+        .container {
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        /* انیمیشن LED */
+        @keyframes ledGlow {
+            0%, 100% { 
+                box-shadow: 
+                    0 0 10px rgba(0, 255, 0, 0.6),
+                    0 0 20px rgba(0, 255, 0, 0.3),
+                    inset 0 0 10px rgba(255, 255, 255, 0.2);
+            }
+            50% { 
+                box-shadow: 
+                    0 0 15px rgba(0, 255, 0, 0.8),
+                    0 0 30px rgba(0, 255, 0, 0.5),
+                    inset 0 0 15px rgba(255, 255, 255, 0.3);
+            }
+        }
+        
+        .led-bar {
+            animation: ledGlow 2s ease-in-out infinite;
+        }
+        
+        .visualization-mode {
+            text-align: center;
+            margin: 15px 0;
+            color: #00ff88;
+            font-size: 1.1em;
         }
     </style>
 </head>
 <body>
-    <h1>کنترل ساعت هوشمند ESP32</h1>
-    
-    <div class="clock-display" id="clock">--:--:--</div>
-    
-    <div class="controls">
-        <button onclick="adjustTime('HOUR', 1)">+ ساعت</button>
-        <button onclick="adjustTime('HOUR', -1)">- ساعت</button>
-        <button onclick="adjustTime('MIN', 1)">+ دقیقه</button>
-        <button onclick="adjustTime('MIN', -1)">- دقیقه</button>
-        <button onclick="sendCommand('TOGGLE')">تغییر حالت 12/24 ساعته</button>
-        <button class="danger" onclick="sendCommand('RESET')">بازنشانی ساعت</button>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">FULL-WIDTH SPECTRUM ANALYZER - STEREO</h1>
+            <p class="subtitle">High Resolution Audio Analysis with Stereo Mode</p>
+        </div>
+        
+        <div class="controls-top">
+            <button class="control-btn off">Turn Off</button>
+            <button class="control-btn reset">Change Mode</button>
+            <button class="control-btn custom">Start Analysis</button>
+        </div>
+        
+        <div class="visualization-mode" id="visualMode">Frequency Spectrum Mode</div>
+        
+        <div class="main-display">
+            <div class="spectrum-section">
+                <div id="stereoView" style="display: none;">
+                    <div class="stereo-container">
+                        <!-- تغییر: کانال راست اول نمایش داده می‌شود -->
+                        <div class="channel">
+                            <div class="channel-title">Right Channel</div>
+                            <div class="spectrum-bars-container">
+                                <div class="spectrum-bars" id="spectrumBarsRight">
+                                    <!-- Right channel bars will be created here -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="channel">
+                            <div class="channel-title">Left Channel</div>
+                            <div class="spectrum-bars-container">
+                                <div class="spectrum-bars" id="spectrumBarsLeft">
+                                    <!-- Left channel bars will be created here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="monoView">
+                    <div class="spectrum-bars-container">
+                        <div class="spectrum-bars" id="spectrumBarsMono">
+                            <!-- Mono bars will be created here -->
+                        </div>
+                    </div>
+                    <div class="frequency-labels" id="freqLabels">
+                        <!-- Frequency labels will be created here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-text" id="statusText">Ready to analyze audio</div>
+            <div class="audio-info" id="audioInfo">Peak: 0dB | RMS: 0dB | Mode: Mono</div>
+        </div>
     </div>
-    
-    <div class="status">
-        <p>وضعیت اتصال: <span id="status-text">قطع</span> <span class="connection-status" id="connection-status"></span></p>
-        <p>آخرین به‌روزرسانی: <span id="last-update">--:--:--</span></p>
-    </div>
-    
+
     <script>
-        // تنظیمات اتصال
-        const config = {
-            // اگر در همان شبکه محلی هستید، آدرس IP ESP32 را وارد کنید
-            esp32Ip: '192.168.254.68',
-            // اگر از اینترنت متصل می‌شوید، آدرس عمومی یا دامنه را وارد کنید
-            // esp32Ip: 'your-public-ip-or-domain.com',
-            port: 81,
-            reconnectInterval: 3000
-        };
+        let audioContext;
+        let analyser;
+        let analyserLeft;
+        let analyserRight;
+        let splitter;
+        let bars = [];
+        let barsLeft = [];
+        let barsRight = [];
+        let barContainers = [];
+        let barContainersLeft = [];
+        let barContainersRight = [];
+        let peaks = [];
+        let peaksLeft = [];
+        let peaksRight = [];
+        let peakElements = [];
+        let peakElementsLeft = [];
+        let peakElementsRight = [];
+        let isRunning = false;
+        let visualizationMode = 'frequency';
+        let audioMode = 'mono'; // 'mono' or 'stereo'
         
-        let ws;
-        let isConnected = false;
-        
-        // اتصال به WebSocket
-        function connect() {
-            const wsUrl = `ws://${config.esp32Ip}:${config.port}/`;
-            ws = new WebSocket(wsUrl);
+        // محاسبه تعداد میله‌ها بر اساس عرض صفحه
+        function calculateBarCount() {
+            const container = document.querySelector('.spectrum-bars');
+            const containerWidth = container.offsetWidth - 20;
+            const barWidth = 4;
+            const gap = 2;
             
-            ws.onopen = function() {
-                console.log('Connected to ESP32');
-                updateConnectionStatus(true);
-                // درخواست همگام‌سازی زمان
-                ws.send('SYNC');
-            };
-            
-            ws.onmessage = function(event) {
-                const data = event.data;
-                console.log('Received:', data);
-                
-                // به‌روزرسانی زمان آخرین تغییر
-                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-                
-                if (data.startsWith('TIME:')) {
-                    // به‌روزرسانی نمایش ساعت
-                    document.getElementById('clock').textContent = data.substring(5);
-                }
-            };
-            
-            ws.onclose = function() {
-                console.log('Disconnected from ESP32');
-                updateConnectionStatus(false);
-                // تلاش مجدد برای اتصال
-                setTimeout(connect, config.reconnectInterval);
-            };
-            
-            ws.onerror = function(error) {
-                console.error('WebSocket Error:', error);
-            };
+            return Math.floor(containerWidth / (barWidth + gap));
         }
         
-        // به‌روزرسانی وضعیت اتصال در رابط کاربری
-        function updateConnectionStatus(connected) {
-            isConnected = connected;
-            const statusElem = document.getElementById('connection-status');
-            const statusText = document.getElementById('status-text');
+        // اعمال وزن فرکانسی برای افزایش حساسیت فرکانس‌های بالا
+        function applyFrequencyWeighting(dataArray, index, totalBars) {
+            // محاسبه موقعیت فرکانسی (0 تا 1)
+            const frequencyPosition = index / totalBars;
             
-            if (connected) {
-                statusElem.classList.add('connected');
-                statusElem.classList.remove('disconnected');
-                statusText.textContent = 'متصل';
+            // اعمال منحنی وزن‌دهی - افزایش حساسیت به فرکانس‌های بالا
+            // استفاده از تابع نمایی برای افزایش وزن فرکانس‌های بالا
+            const weightingFactor = Math.pow(frequencyPosition, 0.5);
+            
+            // اعمال وزن به مقدار
+            return dataArray[index] * (1 + weightingFactor * 1.5);
+        }
+        
+        // ایجاد بارهای LED و نشانگرهای قله
+        function createBars() {
+            const containerMono = document.getElementById('spectrumBarsMono');
+            const containerLeft = document.getElementById('spectrumBarsLeft');
+            const containerRight = document.getElementById('spectrumBarsRight');
+            
+            containerMono.innerHTML = '';
+            containerLeft.innerHTML = '';
+            containerRight.innerHTML = '';
+            
+            bars = [];
+            barsLeft = [];
+            barsRight = [];
+            barContainers = [];
+            barContainersLeft = [];
+            barContainersRight = [];
+            peaks = [];
+            peaksLeft = [];
+            peaksRight = [];
+            peakElements = [];
+            peakElementsLeft = [];
+            peakElementsRight = [];
+            
+            const barCount = calculateBarCount();
+            
+            // ایجاد میله‌ها و نشانگرهای قله برای حالت مونو
+            for (let i = 0; i < barCount; i++) {
+                // ایجاد کانتینر برای هر میله و نشانگر قله آن
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+                containerMono.appendChild(barContainer);
+                barContainers.push(barContainer);
+                
+                // ایجاد میله
+                const bar = document.createElement('div');
+                bar.className = 'led-bar';
+                bar.style.height = '2px';
+                barContainer.appendChild(bar);
+                bars.push(bar);
+                
+                // ایجاد نشانگر قله
+                const peakElement = document.createElement('div');
+                peakElement.className = 'peak-holder';
+                peakElement.style.display = 'none'; // ابتدا مخفی است
+                barContainer.appendChild(peakElement);
+                peakElements.push(peakElement);
+                
+                // مقدار اولیه برای قله
+                peaks.push(0);
+            }
+            
+            // ایجاد میله‌ها و نشانگرهای قله برای حالت استریو (کانال چپ)
+            for (let i = 0; i < barCount; i++) {
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+                containerLeft.appendChild(barContainer);
+                barContainersLeft.push(barContainer);
+                
+                const bar = document.createElement('div');
+                bar.className = 'led-bar';
+                bar.style.height = '2px';
+                barContainer.appendChild(bar);
+                barsLeft.push(bar);
+                
+                const peakElement = document.createElement('div');
+                peakElement.className = 'peak-holder';
+                peakElement.style.display = 'none';
+                barContainer.appendChild(peakElement);
+                peakElementsLeft.push(peakElement);
+                
+                peaksLeft.push(0);
+            }
+            
+            // ایجاد میله‌ها و نشانگرهای قله برای حالت استریو (کانال راست) - به صورت معکوس
+            for (let i = barCount - 1; i >= 0; i--) {
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+                containerRight.appendChild(barContainer);
+                barContainersRight.push(barContainer);
+                
+                const bar = document.createElement('div');
+                bar.className = 'led-bar';
+                bar.style.height = '2px';
+                barContainer.appendChild(bar);
+                barsRight.push(bar);
+                
+                const peakElement = document.createElement('div');
+                peakElement.className = 'peak-holder';
+                peakElement.style.display = 'none';
+                barContainer.appendChild(peakElement);
+                peakElementsRight.push(peakElement);
+                
+                peaksRight.push(0);
+            }
+            
+            // ایجاد برچسب‌های فرکانس (با فرکانس‌های بالا در سمت راست)
+            createFrequencyLabels(barCount);
+        }
+        
+        // ایجاد برچسب‌های فرکانس با فرکانس‌های بالا در سمت راست
+        function createFrequencyLabels(barCount) {
+            const labelsContainer = document.getElementById('freqLabels');
+            labelsContainer.innerHTML = '';
+            
+            const labelCount = 8;
+            for (let i = 0; i < labelCount; i++) {
+                const index = Math.floor(i * (barCount / (labelCount - 1)));
+                const label = document.createElement('span');
+                
+                // معکوس کردن ترتیب فرکانس‌ها (بالاها در سمت راست)
+                const freqIndex = labelCount - 1 - i;
+                const freq = Math.round(31 * Math.pow(2, freqIndex));
+                label.textContent = freq >= 1000 ? (freq/1000).toFixed(1) + 'K' : freq;
+                labelsContainer.appendChild(label);
+            }
+        }
+        
+        // تغییر حالت بین مونو و استریو
+        function toggleAudioMode() {
+            if (audioMode === 'mono') {
+                audioMode = 'stereo';
+                document.getElementById('monoView').style.display = 'none';
+                document.getElementById('stereoView').style.display = 'block';
+                document.getElementById('audioInfo').textContent = document.getElementById('audioInfo').textContent.replace('Mono', 'Stereo');
             } else {
-                statusElem.classList.remove('connected');
-                statusElem.classList.add('disconnected');
-                statusText.textContent = 'قطع';
+                audioMode = 'mono';
+                document.getElementById('stereoView').style.display = 'none';
+                document.getElementById('monoView').style.display = 'block';
+                document.getElementById('audioInfo').textContent = document.getElementById('audioInfo').textContent.replace('Stereo', 'Mono');
             }
         }
         
-        // تنظیم زمان
-        function adjustTime(type, value) {
-            if (!isConnected) {
-                alert('ابتدا به دستگاه متصل شوید');
-                return;
+        // شروع تحلیل صوتی
+        async function startAudio() {
+            if (isRunning) return;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        channelCount: 2, // استریو
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        sampleRate: 44100
+                    }
+                });
+                
+                const source = audioContext.createMediaStreamSource(stream);
+                
+                if (audioMode === 'stereo') {
+                    // ایجاد اسپلیتر برای جدا کردن کانال‌ها
+                    splitter = audioContext.createChannelSplitter(2);
+                    source.connect(splitter);
+                    
+                    // آنالایزر برای کانال چپ
+                    analyserLeft = audioContext.createAnalyser();
+                    analyserLeft.fftSize = 4096;
+                    analyserLeft.smoothingTimeConstant = 0.7; // کاهش برای پاسخگویی بهتر
+                    splitter.connect(analyserLeft, 0);
+                    
+                    // آنالایزر برای کانال راست
+                    analyserRight = audioContext.createAnalyser();
+                    analyserRight.fftSize = 4096;
+                    analyserRight.smoothingTimeConstant = 0.7; // کاهش برای پاسخگویی بهتر
+                    splitter.connect(analyserRight, 1);
+                } else {
+                    // حالت مونو
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 4096;
+                    analyser.smoothingTimeConstant = 0.7; // کاهش برای پاسخگویی بهتر
+                    source.connect(analyser);
+                }
+                
+                isRunning = true;
+                document.getElementById('statusText').textContent = 'Analyzing audio...';
+                analyzeAudio();
+                
+            } catch (error) {
+                console.error('Microphone access error:', error);
+                document.getElementById('statusText').textContent = 'Microphone access denied';
+                
+                // شبیه‌سازی داده‌های صوتی برای نمایش دمو
+                simulateAudio();
+            }
+        }
+        
+        // تحلیل صدا
+        function analyzeAudio() {
+            if (!isRunning) return;
+            
+            let peak = 0;
+            let rms = 0;
+            
+            if (audioMode === 'stereo') {
+                // پردازش حالت استریو
+                const dataArrayLeft = new Uint8Array(analyserLeft.frequencyBinCount);
+                const dataArrayRight = new Uint8Array(analyserRight.frequencyBinCount);
+                
+                if (visualizationMode === 'frequency') {
+                    analyserLeft.getByteFrequencyData(dataArrayLeft);
+                    analyserRight.getByteFrequencyData(dataArrayRight);
+                } else if (visualizationMode === 'waveform') {
+                    analyserLeft.getByteTimeDomainData(dataArrayLeft);
+                    analyserRight.getByteTimeDomainData(dataArrayRight);
+                } else if (visualizationMode === 'peak') {
+                    analyserLeft.getByteFrequencyData(dataArrayLeft);
+                    analyserRight.getByteFrequencyData(dataArrayRight);
+                }
+                
+                // پردازش کانال چپ
+                for (let i = 0; i < barsLeft.length; i++) {
+                    const dataIndex = Math.floor((i / barsLeft.length) * dataArrayLeft.length);
+                    let value = dataArrayLeft[dataIndex] || 0;
+                    
+                    // اعمال وزن فرکانسی برای افزایش حساسیت فرکانس‌های بالا
+                    if (visualizationMode === 'frequency' || visualizationMode === 'peak') {
+                        value = applyFrequencyWeighting(dataArrayLeft, dataIndex, dataArrayLeft.length);
+                    }
+                    
+                    let height;
+                    if (visualizationMode === 'frequency' || visualizationMode === 'peak') {
+                        height = Math.max(2, value * (170 / 256));
+                        
+                        // برای حالت Peak Hold، قله‌ها را ثبت می‌کنیم
+                        if (visualizationMode === 'peak') {
+                            if (value > peaksLeft[i]) {
+                                peaksLeft[i] = value;
+                            } else {
+                                // کاهش آهسته قله‌ها (1 واحد در هر فریم)
+                                peaksLeft[i] = Math.max(value, peaksLeft[i] - 1);
+                            }
+                            
+                            // به‌روزرسانی موقعیت نشانگر قله (در بالای کانتینر)
+                            const peakHeight = Math.max(2, peaksLeft[i] * (170 / 256));
+                            const containerHeight = barContainersLeft[i].offsetHeight;
+                            const peakPosition = containerHeight - peakHeight;
+                            peakElementsLeft[i].style.top = peakPosition + 'px';
+                        }
+                        
+                        barsLeft[i].style.height = height + 'px';
+                    } else {
+                        // برای waveform، مقدار را به صورت مطلق در نظر می‌گیریم با حساسیت کمتر
+                        height = Math.max(2, Math.abs(128 - value) * 1.5);
+                        barsLeft[i].style.height = height + 'px';
+                    }
+                    
+                    if (value > peak) peak = value;
+                    rms += value * value;
+                }
+                
+                // پردازش کانال راست (به صورت معکوس)
+                for (let i = 0; i < barsRight.length; i++) {
+                    const reverseIndex = barsRight.length - 1 - i;
+                    const dataIndex = Math.floor((i / barsRight.length) * dataArrayRight.length);
+                    let value = dataArrayRight[dataIndex] || 0;
+                    
+                    // اعمال وزن فرکانسی برای افزایش حساسیت فرکانس‌های بالا
+                    if (visualizationMode === 'frequency' || visualizationMode === 'peak') {
+                        value = applyFrequencyWeighting(dataArrayRight, dataIndex, dataArrayRight.length);
+                    }
+                    
+                    let height;
+                    if (visualizationMode === 'frequency' || visualizationMode === 'peak') {
+                        height = Math.max(2, value * (170 / 256));
+                        
+                        // برای حالت Peak Hold، قله‌ها را ثبت می‌کنیم
+                        if (visualizationMode === 'peak') {
+                            if (value > peaksRight[reverseIndex]) {
+                                peaksRight[reverseIndex] = value;
+                            } else {
+                                // کاهش آهسته قله‌ها (1 واحد در هر فریم)
+                                peaksRight[reverseIndex] = Math.max(value, peaksRight[reverseIndex] - 1);
+                            }
+                            
+                            // به‌روزرسانی موقعیت نشانگر قله (در بالای کانتینر)
+                            const peakHeight = Math.max(2, peaksRight[reverseIndex] * (170 / 256));
+                            const containerHeight = barContainersRight[reverseIndex].offsetHeight;
+                            const peakPosition = containerHeight - peakHeight;
+                            peakElementsRight[reverseIndex].style.top = peakPosition + 'px';
+                        }
+                        
+                        barsRight[reverseIndex].style.height = height + 'px';
+                    } else {
+                        // برای waveform، مقدار را به صورت مطلق در نظر می‌گیریم با حساسیت کمتر
+                        height = Math.max(2, Math.abs(128 - value) * 1.5);
+                        barsRight[reverseIndex].style.height = height + 'px';
+                    }
+                    
+                    if (value > peak) peak = value;
+                    rms += value * value;
+                }
+            } else {
+                // پردازش حالت مونو
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                if (visualizationMode === 'frequency') {
+                    analyser.getByteFrequencyData(dataArray);
+                } else if (visualizationMode === 'waveform') {
+                    analyser.getByteTimeDomainData(dataArray);
+                } else if (visualizationMode === 'peak') {
+                    analyser.getByteFrequencyData(dataArray);
+                }
+                
+                // به‌روزرسانی بارهای LED
+                for (let i = 0; i < bars.length; i++) {
+                    const dataIndex = Math.floor((i / bars.length) * dataArray.length);
+                    let value = dataArray[dataIndex] || 0;
+                    
+                    // اعمال وزن فرکانسی برای افزایش حساسیت فرکانس‌های بالا
+                    if (visualizationMode === 'frequency' || visualizationMode === 'peak') {
+                        value = applyFrequencyWeighting(dataArray, dataIndex, dataArray.length);
+                    }
+                    
+                    let height;
+                    if (visualizationMode === 'frequency' || visualizationMode === 'peak') {
+                        height = Math.max(2, value * (170 / 256));
+                        
+                        // برای حالت Peak Hold، قله‌ها را ثبت می‌کنیم
+                        if (visualizationMode === 'peak') {
+                            if (value > peaks[i]) {
+                                peaks[i] = value;
+                            } else {
+                                // کاهش آهسته قله‌ها (1 واحد در هر فریم)
+                                peaks[i] = Math.max(value, peaks[i] - 1);
+                            }
+                            
+                            // به‌روزرسانی موقعیت نشانگر قله (در بالای کانتینر)
+                            const peakHeight = Math.max(2, peaks[i] * (170 / 256));
+                            const containerHeight = barContainers[i].offsetHeight;
+                            const peakPosition = containerHeight - peakHeight;
+                            peakElements[i].style.top = peakPosition + 'px';
+                        }
+                        
+                        bars[i].style.height = height + 'px';
+                    } else {
+                        // برای waveform، مقدار را به صورت مطلق در نظر می‌گیریم با حساسیت کمتر
+                        height = Math.max(2, Math.abs(128 - value) * 1.5);
+                        bars[i].style.height = height + 'px';
+                    }
+                    
+                    if (value > peak) peak = value;
+                    rms += value * value;
+                }
             }
             
-            const cmd = `ADJUST_${type}:${value}`;
-            ws.send(cmd);
-            console.log('Sent:', cmd);
+            // محاسبه RMS
+            rms = Math.sqrt(rms / (audioMode === 'stereo' ? (barsLeft.length + barsRight.length) : bars.length));
+            
+            // نمایش اطلاعات
+            const peakDb = Math.round(20 * Math.log10(peak / 256 * 100));
+            const rmsDb = Math.round(20 * Math.log10(rms / 256 * 100));
+            document.getElementById('audioInfo').textContent = 
+                `Peak: ${peakDb}dB | RMS: ${rmsDb}dB | Mode: ${audioMode === 'stereo' ? 'Stereo' : 'Mono'}`;
+            
+            requestAnimationFrame(analyzeAudio);
         }
         
-        // ارسال دستور عمومی
-        function sendCommand(command) {
-            if (!isConnected) {
-                alert('ابتدا به دستگاه متصل شوید');
-                return;
+        // شبیه‌سازی داده‌های صوتی برای زمانی که میکروفون در دسترس نیست
+        function simulateAudio() {
+            isRunning = true;
+            document.getElementById('statusText').textContent = 'Simulating audio (demo mode)';
+            
+            let time = 0;
+            const simulate = () => {
+                if (!isRunning) return;
+                
+                let peak = 0;
+                let rms = 0;
+                
+                const barsArray = audioMode === 'stereo' ? [...barsLeft, ...barsRight] : bars;
+                const peaksArray = audioMode === 'stereo' ? [...peaksLeft, ...peaksRight] : peaks;
+                const peakElementsArray = audioMode === 'stereo' ? [...peakElementsLeft, ...peakElementsRight] : peakElements;
+                const barContainersArray = audioMode === 'stereo' ? [...barContainersLeft, ...barContainersRight] : barContainers;
+                
+                for (let i = 0; i < barsArray.length; i++) {
+                    // ایجاد الگوی موجی برای نمایش
+                    // افزایش فرکانس‌های بالا در شبیه‌سازی
+                    const frequencyWeight = Math.pow(i / barsArray.length, 0.5);
+                    const value = 100 + 80 * Math.sin(time + i * 0.1) * Math.cos(i * 0.05) * (1 + frequencyWeight);
+                    const height = Math.max(2, value * (170 / 256));
+                    
+                    barsArray[i].style.height = height + 'px';
+                    
+                    // برای حالت Peak Hold
+                    if (visualizationMode === 'peak') {
+                        if (value > peaksArray[i]) {
+                            peaksArray[i] = value;
+                        } else {
+                            // کاهش آهسته قله‌ها (1 واحد در هر فریم)
+                            peaksArray[i] = Math.max(value, peaksArray[i] - 1);
+                        }
+                        
+                        const peakHeight = Math.max(2, peaksArray[i] * (170 / 256));
+                        const containerHeight = barContainersArray[i].offsetHeight;
+                        const peakPosition = containerHeight - peakHeight;
+                        peakElementsArray[i].style.top = peakPosition + 'px';
+                    }
+                    
+                    if (value > peak) peak = value;
+                    rms += value * value;
+                }
+                
+                // محاسبه RMS
+                rms = Math.sqrt(rms / barsArray.length);
+                
+                // نمایش اطلاعات
+                const peakDb = Math.round(20 * Math.log10(peak / 256 * 100));
+                const rmsDb = Math.round(20 * Math.log10(rms / 256 * 100));
+                document.getElementById('audioInfo').textContent = 
+                    `Peak: ${peakDb}dB | RMS: ${rmsDb}dB | Mode: ${audioMode === 'stereo' ? 'Stereo' : 'Mono'}`;
+                
+                time += 0.05;
+                requestAnimationFrame(simulate);
+            };
+            
+            simulate();
+        }
+        
+        // دکمه‌های کنترل
+        document.querySelector('.control-btn.off').addEventListener('click', function() {
+            stopAudio();
+            document.getElementById('statusText').textContent = 'Analyzer Off';
+        });
+        
+        document.querySelector('.control-btn.reset').addEventListener('click', function() {
+            // تغییر حالت نمایش بین سه حالت
+            if (visualizationMode === 'frequency') {
+                visualizationMode = 'waveform';
+                document.getElementById('visualMode').textContent = 'Waveform Mode';
+                // مخفی کردن نشانگرهای قله در حالت waveform
+                if (audioMode === 'stereo') {
+                    peakElementsLeft.forEach(el => el.style.display = 'none');
+                    peakElementsRight.forEach(el => el.style.display = 'none');
+                } else {
+                    peakElements.forEach(el => el.style.display = 'none');
+                }
+            } else if (visualizationMode === 'waveform') {
+                visualizationMode = 'peak';
+                document.getElementById('visualMode').textContent = 'Peak Hold Mode';
+                // نمایش نشانگرهای قله
+                if (audioMode === 'stereo') {
+                    peakElementsLeft.forEach(el => {
+                        el.style.display = 'block';
+                        el.style.top = '0px';
+                    });
+                    peakElementsRight.forEach(el => {
+                        el.style.display = 'block';
+                        el.style.top = '0px';
+                    });
+                    // بازنشانی قله‌ها
+                    peaksLeft = peaksLeft.map(() => 0);
+                    peaksRight = peaksRight.map(() => 0);
+                } else {
+                    peakElements.forEach(el => {
+                        el.style.display = 'block';
+                        el.style.top = '0px';
+                    });
+                    // بازنشانی قله‌ها
+                    peaks = peaks.map(() => 0);
+                }
+            } else {
+                visualizationMode = 'frequency';
+                document.getElementById('visualMode').textContent = 'Frequency Spectrum Mode';
+                // مخفی کردن نشانگرهای قله در حالت frequency معمولی
+                if (audioMode === 'stereo') {
+                    peakElementsLeft.forEach(el => el.style.display = 'none');
+                    peakElementsRight.forEach(el => el.style.display = 'none');
+                } else {
+                    peakElements.forEach(el => el.style.display = 'none');
+                }
             }
             
-            ws.send(command);
-            console.log('Sent:', command);
-        }
+            document.getElementById('statusText').textContent = 'Mode changed';
+            setTimeout(() => {
+                if (isRunning) {
+                    document.getElementById('statusText').textContent = 'Analyzing audio...';
+                } else {
+                    document.getElementById('statusText').textContent = 'Ready to analyze audio';
+                }
+            }, 1000);
+        });
         
-        // شروع اتصال هنگام بارگذاری صفحه
+        document.querySelector('.control-btn.custom').addEventListener('click', function() {
+            // تغییر بین حالت مونو و استریو
+            toggleAudioMode();
+            stopAudio();
+            createBars();
+            startAudio();
+        });
+        
+        // مقداردهی اولیه
         window.onload = function() {
-            connect();
+            createBars();
             
-            // نمایش آدرس اتصال در کنسول
-            console.log(`Attempting to connect to ws://${config.esp32Ip}:${config.port}/`);
+            // تطبیق با تغییر اندازه پنجره
+            window.addEventListener('resize', createBars);
+            
+            // شروع خودکار برای نمایش
+            setTimeout(startAudio, 1000);
         };
+        
+        // توقف تحلیل
+        function stopAudio() {
+            isRunning = false;
+            if (audioContext) {
+                audioContext.close();
+            }
+            
+            // بازنشانی میله‌ها و قله‌ها
+            const allBars = [...bars, ...barsLeft, ...barsRight];
+            const allPeaks = [...peaks, ...peaksLeft, ...peaksRight];
+            const allPeakElements = [...peakElements, ...peakElementsLeft, ...peakElementsRight];
+            const allContainers = [...barContainers, ...barContainersLeft, ...barContainersRight];
+            
+            allBars.forEach(bar => {
+                if (bar) bar.style.height = '2px';
+            });
+            
+            // بازنشانی قله‌ها
+            allPeaks.forEach((_, i) => {
+                allPeaks[i] = 0;
+                const containerHeight = allContainers[i].offsetHeight;
+                allPeakElements[i].style.top = containerHeight + 'px';
+            });
+            
+            document.getElementById('audioInfo').textContent = 'Peak: 0dB | RMS: 0dB | Mode: ' + (audioMode === 'stereo' ? 'Stereo' : 'Mono');
+        }
     </script>
 </body>
 </html>
